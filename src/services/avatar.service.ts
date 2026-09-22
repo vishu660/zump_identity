@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, DeleteObjectCommand, HeadObjectCommand, GetObjectCommand} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import s3Client, { avatarBucket } from "../config/s3.js";
 
@@ -9,7 +9,7 @@ export const MAX_AVATAR_SIZE = Number (
 );
 
 const PRESIGNED_URL_EXPIRES = Number (
-    process.env.S3_PRESIGNED_URL_EXPIRES || 600
+    process.env.S3_PRESIGNED_EXPIRES || 600
 );
 
 export const ALLOWED_CONTENT_TYPES = [
@@ -83,4 +83,25 @@ export const deleteAvatarObject = async (
 
      await s3Client.send(command);
      
+};
+
+export const createAvatarViewUrl = async (
+    avatarKey: string,
+) => {
+    
+    const command = new GetObjectCommand({
+        Bucket : avatarBucket,
+        Key: avatarKey,
+    });
+
+    const viewUrl = await getSignedUrl(
+        s3Client,
+        command,
+        {
+            expiresIn: PRESIGNED_URL_EXPIRES,
+        }
+    );
+
+    return viewUrl;
+    
 };

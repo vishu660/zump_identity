@@ -3,6 +3,7 @@ import User from "../models/user.model.js";
 import redisClient from "../config/redis.js";
 import { updateProfileSchema, replaceProfileSchema } from "../validators/profile.validator.js";
 import type { AuthenticatedRequest } from "../middleware/auth.middleware.js";
+import { createAvatarViewUrl } from "../services/avatar.service.js";
 
 const PROFILE_CACHE_TTL = 300;
 
@@ -10,8 +11,6 @@ export const getMyProfile = async (
     req: AuthenticatedRequest,
     res: Response,
 ) => {
-
-      console.log("GET /users/me controller reached");
 
     try{
         const userId = req.userId;
@@ -52,12 +51,19 @@ export const getMyProfile = async (
             });
         }
 
+        let avatarUrl: string | null = null;
+
+        if (user.avatarKey) {
+            avatarUrl = await createAvatarViewUrl(user.avatarKey);
+        }
+
         const profile = {
             id: user.id,
             phone: user.phone,
             countryCode: user.countryCode,
             email: user.email,
             name: user.name,
+            avatarUrl,
             avatarKey: user.avatarKey ?? null,
             address: user.address ?? null,
             dateOfBirth: user.dateOfBirth,
@@ -211,7 +217,6 @@ export const updateMyProfile = async (
                 countryCode: user.countryCode,
                 email: user.email,
                 name: user.name,
-                avatarKey: user.avatarKey ?? null,
                 address: user.address ?? null,
                 dateOfBirth: user.dateOfBirth ?? null,
                 status: user.status,
