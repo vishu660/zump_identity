@@ -1,5 +1,4 @@
 import mongoose, { Schema, Document } from "mongoose";
-import { string } from "zod";
 
 export interface ISession extends Document {
     userId: mongoose.Types.ObjectId;
@@ -22,7 +21,6 @@ const sessionSchema = new Schema<ISession>({
     type: String,
     required: true,
     unique: true,
-    index: true,
  },
  familyId: {
     type: String,

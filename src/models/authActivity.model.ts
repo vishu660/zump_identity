@@ -1,5 +1,6 @@
+import { create } from "domain";
 import mongoose, { Schema, Document } from "mongoose";
-import { string } from "zod";
+import { success } from "zod";
 
 
 export interface IAuthActivity extends Document {
@@ -41,6 +42,13 @@ const authActivitySchema = new Schema<IAuthActivity>({
     }
 }
 );
+
+authActivitySchema.index({
+    userId: 1,
+    success: 1,
+    event: 1,
+    createdAt: -1,
+});
 
 const AuthActivity = mongoose.model<IAuthActivity>(
     "authActivity",

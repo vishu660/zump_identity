@@ -1,14 +1,15 @@
 import type { Request, Response } from "express";
 import argon2 from "argon2";
 import mongoose from "mongoose";
-
+import redisClient from "../config/redis.js";
 import User from "../models/user.model.js";
 import Session from "../models/session.model.js";
 import AuthActivity from "../models/authActivity.model.js";
-
 import { createUserSchema } from "../validators/user.validator.js";
 import { loginSchema } from "../validators/auth.validator.js";
 import { generateTokens } from "../utils/token.js";
+import type { AuthenticatedRequest } from "../middleware/auth.middleware.js";
+import { error } from "console";
 
 export const signupUser = async (req: Request, res: Response) => {
   const result = createUserSchema.safeParse(req.body);
@@ -205,4 +206,83 @@ export const loginUser = async (req: Request, res: Response) => {
       refreshToken,
     },
   });
+};
+
+
+export const logoutController = async (
+  req: AuthenticatedRequest,
+  res: Response,
+) => {
+  try {
+      const userId = req.userId;  
+
+      if (!userId) {
+        return res.status(401).json({
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Authentication required",    
+            details: {},
+          },
+        });
+      }
+
+      const { refreshToken } = req.body;
+
+      if (!refreshToken) {
+        return res.status(400).json({
+          error: {
+            code: "REFRESH_TOKEN_REQUIRED",
+            message: "Refresh token is required",
+            details: {},
+          },
+        });
+      }
+
+      const session = await Session.findOne({
+        userId,
+        revokedAt: null,
+      });
+
+      if (!session) {
+        return res.status(400).json({
+          error: {
+            code: "SESSION_NOT_FOUND",
+            message: "Active session not found",
+            details: {},
+          },
+        });
+      }
+
+      session.revokedAt = new Date();
+
+      await session.save();
+
+      await redisClient.del(`user:profile:${userId}`);
+
+      await AuthActivity.create({
+        userId,
+        event: "logout",
+        success: true,
+        ipAddress: req.ip ?? undefined,
+        ...(req.get("user-agent")
+        ? { userAgent: req.get("user-agent")}
+        : {}),
+      });
+
+      return res.status(200).json({
+        data: {
+             message: "Logout successful",
+        },
+      });
+  } catch (error) {
+    console.error("Logout error:", error);
+
+    return res.status(500).json({
+      error: {
+        code: "LOGOUT_FAILED",
+        message: "Unable to logout",
+        details: {},
+      },
+    });
+  }
 };
